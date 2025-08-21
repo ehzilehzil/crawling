@@ -4,17 +4,16 @@ from dotenv import load_dotenv
 import time
 import random
 
-config = {
-    "max": 30,
-    "limit": 20,
-    "current": 0,
-}
+class Config:
+    max = 30
+    limit = 10
+    current = 0
 
 async def main():
     load_dotenv(dotenv_path="../.env")
     # print(os.getenv("TELEGRAM_CHAT_ID"))
 
-    queue = asyncio.Queue(maxsize=config["max"])
+    queue = asyncio.Queue(maxsize=Config.max)
     start = time.time()
 
 
@@ -41,8 +40,8 @@ async def producer(queue: asyncio.Queue):
 
 async def consumer(queue: asyncio.Queue):
     while True:
-        if config["current"] < config["limit"]:
-            config["current"] += 1
+        if Config.current < Config.limit:
+            Config.current += 1
             data = await queue.get()
             asyncio.create_task(task(queue, data))  # await 없이 호출
         await asyncio.sleep(0.1)
@@ -55,7 +54,7 @@ async def task(queue, data):
 
     print(f"✅ {i}번째 데이터 처리 완료: {data}")
     queue.task_done()
-    config["current"] -= 1
+    Config.current -= 1
 
 
 if __name__ == "__main__":
