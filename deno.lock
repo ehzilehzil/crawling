@@ -1,0 +1,43 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@std/assert@1": "1.0.14",
+    "jsr:@std/dotenv@*": "0.225.5",
+    "jsr:@std/internal@^1.0.10": "1.0.10"
+  },
+  "jsr": {
+    "@std/assert@1.0.14": {
+      "integrity": "68d0d4a43b365abc927f45a9b85c639ea18a9fab96ad92281e493e4ed84abaa4",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/dotenv@0.225.5": {
+      "integrity": "9ce6f9d0ec3311f74a32535aa1b8c62ed88b1ab91b7f0815797d77a6f60c922f"
+    },
+    "@std/internal@1.0.10": {
+      "integrity": "e3be62ce42cab0e177c27698e5d9800122f67b766a0bea6ca4867886cbde8cf7"
+    }
+  },
+  "redirects": {
+    "https://deno.land/x/workerpool/mod.ts": "https://deno.land/x/workerpool@v0.2.6/mod.ts"
+  },
+  "remote": {
+    "https://deno.land/x/comlink@4.3.1/mod.ts": "50467f0d8eeb5afdb7ec54979fb4e0ba5665f2a964eb7b5cb7efe8ad9e0d0016",
+    "https://deno.land/x/comlink@4.3.1/src/comlink.ts": "447a5ad4cd1b484d09b4466abeaad6cba79890f088b0214ff1c4240ec8a48cd1",
+    "https://deno.land/x/comlink@4.3.1/src/protocol.ts": "d9f94213ff5b11d9670b823dc4f1b9ff00ff7fafe98749a522db5f605c6abd37",
+    "https://deno.land/x/fest@v3.5.7-alpha.2/mod.ts": "8dd20290582d5ba500ceb3e91f1cc69dcc23e096445a4db8c7ae85520cca82f1",
+    "https://deno.land/x/workerpool@v0.2.6/Executable.ts": "4547235d6f6eb20c1caf41eec7671c8b5a19ec2c03d6ba75aafbee7aa4651f1a",
+    "https://deno.land/x/workerpool@v0.2.6/ExecutableWorker.ts": "f9bb4db732a3dd15c985de5461908198a1238bee6fb5ea7653363c543f085800",
+    "https://deno.land/x/workerpool@v0.2.6/Runner.ts": "d462310e0beab92df5e5e1d191ca424398483be6e369b6a352da376b608bd378",
+    "https://deno.land/x/workerpool@v0.2.6/Task.ts": "022dee4874c2be61c8d14c7768c8f376c7933266f1fd9a03c9133c2e0353848d",
+    "https://deno.land/x/workerpool@v0.2.6/Workerpool.ts": "24248931b43d94c43e1095a26268b00b2c6543f991536b2469b76186a998a412",
+    "https://deno.land/x/workerpool@v0.2.6/deps.ts": "750ca686825571ad3204a265db1a1cbfef5ed72172b2ef7648d538bcf242c10b",
+    "https://deno.land/x/workerpool@v0.2.6/mod.ts": "6875b4ca8f6e65a6e5c15dc1a008851a9b46c7cb7d8e3ed90c52cd3c35bda3e1"
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@std/assert@1"
+    ]
+  }
+}
