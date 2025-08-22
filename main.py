@@ -1,8 +1,8 @@
 import os
 import asyncio
-from dotenv import load_dotenv
 import time
 import random
+import utils
 
 class Config:
     max = 30
@@ -10,7 +10,6 @@ class Config:
     current = 0
 
 async def main():
-    load_dotenv(dotenv_path="../.env")
     # print(os.getenv("TELEGRAM_CHAT_ID"))
 
     queue = asyncio.Queue(maxsize=Config.max)
