@@ -21,3 +21,9 @@ Thumbs.db
 coverage/
 
 node_modules/
+tor-9050/
+tor-9060/
+tor-9070/
+tor-9080/
+tor-9090/
+__pycache__/
