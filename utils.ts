@@ -1,4 +1,7 @@
 import { Logger } from "jsr:@deno-library/logger"
+import { config } from "https://deno.land/x/dotenv/mod.ts"
+
+const env = config({ path: "../_env/.env" })
 
 /** log 표시 함수 */
 export const log = new Logger()
@@ -11,7 +14,10 @@ export function sleep(ms: number): Promise<void> {
 
 
 /** 텔레그램으로 메시지 송신 */
-export async function sendMsgToTelegram(msg: string, token: string, chatId: string) {
+export async function sendMsgToTelegram(msg: string) {
+    const token = env.TELEGRAM_TOKEN
+    const chatId = env.TELEGRAM_CHAT_ID
+
     const url = `https://api.telegram.org/bot${token}/sendMessage`;
     const response = await fetch(url, {
         method: "POST",
@@ -31,4 +37,8 @@ export async function sendMsgToTelegram(msg: string, token: string, chatId: stri
 /** min ~ max 까지 난수 생성 */
 export function rand_between(min: number, max: number) {
     return Math.random() * (max - min) + min
+}
+
+if (import.meta.main) {
+    sendMsgToTelegram("안녕")
 }

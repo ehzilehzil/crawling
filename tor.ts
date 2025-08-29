@@ -2,7 +2,7 @@ import { log } from "node:console";
 import * as ez from "./utils.ts"
 
 const ports = [
-    9050, 9060, 9070, 9080, 9090,
+    9050, 9060, 9070, 9080, 9090, 9100, 9110, 9120, 9130, 9140
 ]
 // tor.exe 환경설정 필수
 const cmd = ports.map((x) => {

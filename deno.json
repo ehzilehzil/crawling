@@ -4,6 +4,8 @@
     "run": "deno run -A --env-file=../.env main.ts"
   },
   "imports": {
-    "@std/assert": "jsr:@std/assert@1"
+    "@std/assert": "jsr:@std/assert@1",
+    "@types/papaparse": "npm:@types/papaparse@^5.3.16",
+    "papaparse": "npm:papaparse@^5.5.3"
   }
 }

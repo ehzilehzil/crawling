@@ -15,7 +15,7 @@
 import * as ez from "./utils.ts"
 import { coordconv, COORD_CODE } from "./coordconv.js"
 import * as tor from "./tor.ts"
-import { log } from "node:console";
+// import { log } from "node:console";
 
 const output: string = `ez_get_point.ndjson`
 const port_status: ("idle" | "busy")[] = ["idle", "idle", "idle", "idle", "idle"]
