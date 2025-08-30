@@ -1,0 +1,33 @@
+# Deno 캐시 디렉토리
+/deno_dir/
+
+# VSCode 설정
+.vscode/
+.idea/
+*.code-workspace
+
+# 환경 변수 파일
+.env
+
+# MacOS 시스템 파일
+.DS_Store
+
+# 테스트 결과, 커버리지
+/coverage
+junit.xml
+
+# Playwright 브라우저 캐시
+/.ms-playwright
+
+# 임시 파일
+*.swp
+*.pyc
+*.orig
+*.symcache
+
+# Jupyter 노트북 체크포인트
+.ipynb_checkpoints/
+Untitled*.ipynb
+
+# nodejs 호환
+node_modules/
