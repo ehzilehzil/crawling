@@ -5,9 +5,7 @@
 
 import * as ez from "./utils.ts";
 import { MongoClient } from "npm:mongodb";
-import { config } from "https://deno.land/x/dotenv/mod.ts"
 
-const env = config({ path: "../_env/.env" });
 
 // 토르 네트워크 관련 초기화
 const ports = [
@@ -25,7 +23,7 @@ await tor_proc.status;
 
 
 // 몽고DB 관련 초기화
-const client = new MongoClient(`mongodb://${env.MONGODB_ID}:${env.MONGODB_PW}@127.0.0.1:27017`);
+const client = new MongoClient("mongodb://127.0.0.1:27017");
 await client.connect();
 const db = client.db("marketmap");
 const naver_2502 = db.collection("naver_2502");
