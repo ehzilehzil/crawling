@@ -1,7 +1,8 @@
 import { Logger } from "jsr:@deno-library/logger"
 import { config } from "https://deno.land/x/dotenv/mod.ts"
 
-const env = config({ path: "../_env/.env" })
+/** 각종 환경변수 */
+export const env = config({ path: "../_env/.env" });
 
 /** log 표시 함수 */
 export const log = new Logger()

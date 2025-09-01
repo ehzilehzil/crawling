@@ -5,17 +5,17 @@
 
 import * as ez from "./utils.ts";
 import { MongoClient } from "npm:mongodb";
-import { config } from "https://deno.land/x/dotenv/mod.ts"
+import { config } from "https://deno.land/x/dotenv/mod.ts";
 
 const env = config({ path: "../_env/.env" });
 
 // 토르 네트워크 관련 초기화
 const ports = [
-    9050, 9060, 9070, 9080, 9090, 9100, 9110, 9120, 9130, 9140, 9150, 9160, 9170, 9180, 9190
+    9050, 9060, 9070, 9080, 9090
 ];
 const port_status: ("idle" | "busy")[] = Array.from({ length: ports.length }, (_) => "idle");
 const cmd = ports.map((x) => {
-    return `start /b tor.exe --SocksPort ${x} --ControlPort ${x + 1} --MaxCircuitDirtiness 90 --DataDirectory z:\\_dev\\crawling_\\tor-${x}`;
+    return `start /b tor.exe --SocksPort ${x} --ControlPort ${x + 1} --MaxCircuitDirtiness 90 --DataDirectory ..\\_env\\tor-${x}`;
 }).join(" & ");
 const tor_command = new Deno.Command("cmd.exe", {
     args: ["/c", "start", "cmd", "/k", cmd],
@@ -25,7 +25,7 @@ await tor_proc.status;
 
 
 // 몽고DB 관련 초기화
-const client = new MongoClient(`mongodb://${env.MONGODB_ID}:${env.MONGODB_PW}@127.0.0.1:27017`);
+const client = new MongoClient(`mongodb://${env.MONGODB_ID}:${env.MONGODB_PW}@ehzilehzil.iptime.org:27017`);
 await client.connect();
 const db = client.db("marketmap");
 const naver_2502 = db.collection("naver_2502");
