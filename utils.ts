@@ -43,3 +43,29 @@ export function rand_between(min: number, max: number) {
 if (import.meta.main) {
     sendMsgToTelegram("안녕")
 }
+
+/** 토르 인스턴스 생성, port 번호를 담은 배열을 인수로 전달, ports_status 리턴 */
+export async function init_tor(ports: number[]): Promise<("busy" | "idle")[]> {
+    try {
+        const cmd = ports.map((x) => {
+            return `start /b tor.exe --SocksPort ${x} --ControlPort ${x + 1} --MaxCircuitDirtiness 90 --DataDirectory ..\\_env\\tor-${x}`;
+        }).join(" & ");
+        const tor_command = new Deno.Command("cmd.exe", {
+            args: ["/c", "start", "cmd", "/k", cmd],
+        });
+        const tor_proc = tor_command.spawn();
+        await tor_proc.status;
+    } catch(e) {
+        log.info(`토르 초기화 오류`);
+        Deno.exit(1);
+    }
+    return Array.from({ length: ports.length }, (_) => "idle");
+}
+
+/**
+ * 토르 네트워크를 사용하는 fetch 함수, port 는 토르 인스턴스 번호로 0 ~ 9 숫자
+ */
+export async function tor_fetch(ports: number[], port: number, url: string, obj: object={}) {
+    const client = Deno.createHttpClient({ proxy: { url: `socks5://127.0.0.1:${ports[port]}` } })
+    return await fetch(url, { client, ...obj })
+}

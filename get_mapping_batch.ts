@@ -26,62 +26,53 @@ console.timeEnd("task");
  * 메인 루프
  */
 async function main() {
-    const nice_total_index_count = await nice.countDocuments({});
+    const nice_total_index_count = await nice.countDocuments({ });
 
     while (true) {
-        const five_minute_ago = new Date(Date.now() - 5 * 60 * 1_000);
-        const nice_doc = await nice.findOneAndUpdate({
-            $or: [
-                { "status" : { $exists: false } },
-                { "status.state" : "processing", "status.start_at" : { $lt: five_minute_ago } },
-            ],
-        }, {
-            $set: {
-                "status.state" : "processing",
-                "status.start_at" : new Date(),
-            },
-            $inc: {
-                "status.tried_count" : 1,
-            }
-        }, {
-            returnDocument: "after",
-        });
-        if (!nice_doc) break;
+        
+        // const five_minute_ago = new Date(Date.now() - 5 * 60 * 1_000);
+        const docs = await nice.find({ "status.state": "notfound" }).limit(300).toArray();
 
-        const { nice_id: nice_id, bisno: nice_bisno, store_nm: nice_store_nm, lon: nice_x, lat: nice_y } = nice_doc.src;
+        if (docs.length === 0) break;
 
-        const naver_doc = naver.find({
-            longitude: { $gte: nice_x - 0.0005, $lte: nice_x + 0.0005 },
-            latitude: { $gte: nice_y - 0.0005, $lte: nice_y + 0.0005 },
-        });
+        const bulk = [];
+        for (const nice_doc of docs) {
 
-        const candidate = await naver_doc.toArray();
-        for (const [i, { name: naver_name }] of candidate.entries()) {
-            // console.log(naver_id, naver_name, naver_x, naver_y);
-            candidate[i].jaccard = j(nice_store_nm.toString(), naver_name.toString());
-        }   
+            const { nice_id: nice_id, bisno: nice_bisno, store_nm: nice_store_nm, lon: nice_x, lat: nice_y } = nice_doc.src;
 
-        const result = (() => {
-            if (candidate.length === 0) return {};
-            const { id: naver_id, name: naver_name, jaccard: jaccard_index, longitude: naver_lon, latitude: naver_lat } = candidate.sort((x, y) => -(x.jaccard - y.jaccard))[0];
+            const naver_doc = naver.find({
+                longitude: { $gte: nice_x - 0.005, $lte: nice_x + 0.005 },
+                latitude: { $gte: nice_y - 0.005, $lte: nice_y + 0.005 },
+            });
 
-            return (jaccard_index < 0.6) ? {} : { naver_id, naver_name, jaccard_index, naver_lon, naver_lat };
-        })();
-        const state = (Object.keys(result).length === 0) ? "notfound" : "done";
+            const candidate = await naver_doc.toArray();
+            for (const [i, { name: naver_name }] of candidate.entries()) {
+                // console.log(naver_id, naver_name, naver_x, naver_y);
+                candidate[i].jaccard = j(nice_store_nm.toString(), naver_name.toString());
+            }   
 
-        const _ = await nice.findOneAndUpdate({
-            _id: nice_doc._id,
-        }, {
-            $set: {
-                "result" : result,
-                "status.state" : state,
-            },
-        }, {
-            returnDocument: "after",
-        });
+            const result = (() => {
+                if (candidate.length === 0) return {};
+                const { id: naver_id, name: naver_name, jaccard: jaccard_index, longitude: naver_lon, latitude: naver_lat } = candidate.sort((x, y) => -(x.jaccard - y.jaccard))[0];
 
-        ez.log.info(`${nice_id}/${nice_total_index_count} : ${JSON.stringify(result)}`);
+                return (jaccard_index < 0.6) ? {} : { naver_id, naver_name, jaccard_index, naver_lon, naver_lat };
+            })();
+            const state = (Object.keys(result).length === 0) ? "notfound_test" : (result.jaccard_index === 1 ? "state_0" : "state_1");
 
+            bulk.push({
+                updateOne: {
+                    filter: { "src.nice_id" : nice_id },
+                    update: {
+                        $set: { "status.state": state, "result" : result },
+                    },
+                },
+            });
+            ez.log.info(`${nice_id}/${nice_total_index_count} : ${JSON.stringify(result)}`);
+
+        }
+    
+        await nice.bulkWrite(bulk);
+        
         // break;
     }
 }
