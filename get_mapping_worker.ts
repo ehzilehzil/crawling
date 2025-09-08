@@ -7,7 +7,7 @@
  * 만일 유사도가 0.6 미만이라면 Y 안에서는 X 와 매핑할 도큐먼트가 없는 것으로 간주
  */
 
-import { AnyBulkWriteOperation, Document, MongoClient } from "npm:mongodb";
+import { MongoClient } from "npm:mongodb";
 import * as ez from "./utils.ts";
 
 
@@ -16,17 +16,17 @@ const client = new MongoClient(`mongodb://${ez.env.MONGODB_ID}:${ez.env.MONGODB_
 await client.connect();
 const db = client.db("marketmap");
 const naver = db.collection("naver");
-const nice = db.collection("nice_2507_re");
+const nice = db.collection("nice_2507");
 
 
 // 워커 및 글로벌 변수 초기화
-// const workers: ("busy" | "idle")[] = [
-//     "idle", "idle", "idle", "idle", "idle"
-// ];
+const workers: ("busy" | "idle")[] = [
+    "idle", "idle", "idle", "idle", "idle", "idle"
+];
 const global = {
     total_count: 0,
-    count: 0,
-    // task_done: false,
+    count: 1,
+    task_done: false,
 };
 const filter = {
     $or: [
@@ -41,7 +41,7 @@ console.time("task");
 ez.sendMsgToTelegram(`${ import.meta.url.split("/").pop() } 시작`);
 await main();
 
-
+while (workers.some((w) => w === "busy")) await ez.sleep(300);
 await client.close();
 console.timeEnd("task");
 Deno.exit(0);
@@ -54,27 +54,39 @@ Deno.exit(0);
  * 메인 루프
  */
 async function main() {
+    let i = 0;
 
     global.total_count = await nice.countDocuments(filter);
 
 
-    while (true) {
-        const nice_docs = await nice.find(filter).limit(200).toArray();
-        if (nice_docs.length === 0) break;
+    while (!global.task_done) {
+        while (workers.every((w) => w === "busy")) await ez.sleep(300);
 
-        const batches: AnyBulkWriteOperation<Document>[] = [];
-        for (const nice_doc of nice_docs) {
+        const worker = workers.indexOf("idle");
+        workers[worker] = "busy";
+        // await 없이 호출
+        (async (worker: number) => {
+            let from_catch = false;
+
             try {
-                let is_matched = false;
-            
+                const nice_doc = await nice.findOneAndUpdate(filter, {
+                    $set: {
+                        "status.state": `worker_${worker}`,
+                    }
+                },{
+                    returnDocument: "after",
+                });
+                if (!nice_doc) {
+                    global.task_done = true;
+                    return;
+                }
+
                 const naver_docs = await naver.find({
                     longitude: { $gte: nice_doc.src.lon - 0.003, $lte: nice_doc.src.lon + 0.003 },
                     latitude: { $gte: nice_doc.src.lat - 0.003, $lte: nice_doc.src.lat + 0.003 }
                 }).toArray();
-
                 const candidate = [];
                 for (const naver_doc of naver_docs) {
-                
                     const jaccard_index = jaccardSimilarity(nice_doc.src.store_nm.toString(), naver_doc.name.toString());
                     const cosine_index = cosineSimilarity(nice_doc.src.store_nm.toString(), naver_doc.name.toString());
                     candidate.push({
@@ -90,92 +102,66 @@ async function main() {
                     });
 
                     if (jaccard_index === 1 || cosine_index === 1) {
-                        batches.push({
-                            updateOne: {
-                                filter: { "src.nice_id" : nice_doc.src.nice_id },
-                                update: {
-                                    $set: {
-                                        "status.state": "state_0",
-                                        naver: candidate[candidate.length - 1],
-                                        // "status.test": true,
-                                    },
-                                },
+                        await nice.findOneAndUpdate({
+                            "src.nice_id": nice_doc.src.nice_id,
+                        }, {
+                            $set: {
+                                "status.state": "state_0",
+                                naver: candidate[candidate.length - 1],
                             },
                         });
-                        is_matched = true;
-                        break;
-                    }
-                } // for (const naver_doc of naver_docs)
 
-                if (is_matched) continue;
-
-                if (candidate.length > 0) {
-
-                    candidate.sort((x, y) => x.cosine_index - y.cosine_index);
-                    if (candidate[candidate.length - 1].cosine_index >= 0.6) {
-                        batches.push({
-                            updateOne: {
-                                filter: { "src.nice_id" : nice_doc.src.nice_id },
-                                update: {
-                                    $set: {
-                                        "status.state": "state_1",
-                                        naver: candidate[candidate.length - 1],
-                                        // "status.test": true,
-                                    },
-                                },
-                            },
-                        });
-                        is_matched = true;
-                    }
-
-                    if (is_matched) continue;
-
-                    candidate.sort((x, y) => x.jaccard_index - y.jaccard_index);
-                    if (candidate[candidate.length - 1].jaccard_index >= 0.6) {
-                        batches.push({
-                            updateOne: {
-                                filter: { "src.nice_id" : nice_doc.src.nice_id },
-                                update: {
-                                    $set: {
-                                        "status.state": "state_1",
-                                        naver: candidate[candidate.length - 1],
-                                        // "status.test": true,
-                                    },
-                                },
-                            },
-                        });
-                        is_matched = true;
+                        return;
                     }
                 }
 
-                if (is_matched) continue;
-                
-                batches.push({
-                    updateOne: {
-                        filter: { "src.nice_id" : nice_doc.src.nice_id },
-                        update: {
+                candidate.sort((x, y) => x.cosine_index - y.cosine_index);
+                if (candidate[candidate.length - 1].cosine_index >= 0.6) {
+                    await nice.findOneAndUpdate({
+                            "src.nice_id": nice_doc.src.nice_id,
+                        }, {
                             $set: {
-                                "status.state": "notfound",
-                                // "status.test": true,
+                                "status.state": "state_1",
+                                naver: candidate[candidate.length - 1],
                             },
-                        },
+                        });
+                    return;
+                }
+
+                candidate.sort((x, y) => x.jaccard_index - y.jaccard_index);
+                if (candidate[candidate.length - 1].jaccard_index >= 0.6) {
+                    await nice.findOneAndUpdate({
+                            "src.nice_id": nice_doc.src.nice_id,
+                        }, {
+                            $set: {
+                                "status.state": "state_1",
+                                naver: candidate[candidate.length - 1],
+                            },
+                        });
+                    return;
+                }
+
+                await nice.findOneAndUpdate({
+                    "src.nice_id": nice_doc.src.nice_id,
+                }, {
+                    $set: {
+                        "status.state": "notfound",
                     },
-                });
+                });                
 
-            } catch (e) {
-                ez.log.info(`${nice_doc.src.nice_id} 에러 발생 ==>`, e);
-            }  
-            
-        } // for (const nice_doc of nice_docs)
+            } catch(e) {
+                from_catch = true;
+                ez.log.info(`⚠️==> ${global.count}/${global.total_count} 워커 에러 발생`, e);
+            } finally {
+                if (!from_catch) {
+                    if (global.count % 10000 === 0) ez.sendMsgToTelegram(`${global.count}/${global.total_count} 완료`);
+                    ez.log.info(`✅==> ${global.count++}/${global.total_count} 완료`);
+                } 
+                workers[worker] = "idle";
+            }
+        })(worker);
 
-        await nice.bulkWrite(batches);
-        const start_count = global.count + 1;
-        global.count += batches.length;
-
-        if (Math.round(global.count / 10000) - Math.round(start_count / 10000) === 1) ez.sendMsgToTelegram(`${Math.round(global.count / 10000)*10000}/${global.total_count} 완료`);
-        ez.log.info(`✅==> ${start_count} ~ ${global.count} / ${global.total_count} 완료`);
-        
-        // break;
+        // if (i++ >= 10) break;
     }
 }
 
