@@ -31,10 +31,6 @@ const filter: Filter<Document> = {
         { "naver_api.status": "processing", "naver_api.expires_at": { $lt: new Date() } },
     ],
 };
-const locker: UpdateFilter<Document> = {
-    $set: { "naver_api.status": "processing", "naver_api.expires_at": new Date(Date.now() + 300_000) },  // 300초(5분)
-    $inc: { "naver_api.tried_count": 1 },
-};
 global.total_count = await nice.countDocuments(filter);
 
 
@@ -97,7 +93,10 @@ async function task(port: number): Promise<{ e: Error | undefined }> {
     }, 180_000);    // 180초(3분)
 
     try {
-        const doc = await nice.findOneAndUpdate(filter, locker, {
+        const doc = await nice.findOneAndUpdate(filter, {
+            $set: { "naver_api.status": "processing", "naver_api.expires_at": new Date(Date.now() + 300_000) },  // 300초(5분)
+            $inc: { "naver_api.tried_count": 1 },
+        }, {
             returnDocument: "after",
         });
         if(!doc) throw new Error(`더 이상 처리할 문서가 없음`);
