@@ -1,8 +1,8 @@
-import { Logger } from "jsr:@deno-library/logger"
-import { config } from "https://deno.land/x/dotenv/mod.ts"
+import { Logger } from "jsr:@deno-library/logger";
+import { config } from "https://deno.land/x/dotenv/mod.ts";
 
 /** 각종 환경변수 */
-export const env = config({ path: "../_env/.env" });
+export const env = config({ path: "z:/_env/.env" });
 
 /** log 표시 함수 */
 export const log = new Logger()
@@ -48,7 +48,7 @@ if (import.meta.main) {
 export async function init_tor(ports: number[]): Promise<("busy" | "idle")[]> {
     try {
         const cmd = ports.map((x) => {
-            return `start /b tor.exe --SocksPort ${x} --ControlPort ${x + 1} --MaxCircuitDirtiness 90 --DataDirectory ..\\_env\\tor-${x}`;
+            return `start /b tor.exe --SocksPort ${x} --ControlPort ${x + 1} --MaxCircuitDirtiness 90 --DataDirectory z:\\_env\\tor-${x}`;
         }).join(" & ");
         const tor_command = new Deno.Command("cmd.exe", {
             args: ["/c", "start", "cmd", "/k", cmd],
@@ -66,6 +66,22 @@ export async function init_tor(ports: number[]): Promise<("busy" | "idle")[]> {
  * 토르 네트워크를 사용하는 fetch 함수, port 는 토르 인스턴스 번호로 0 ~ 9 숫자
  */
 export async function tor_fetch(ports: number[], port: number, url: string, obj: object={}) {
-    const client = Deno.createHttpClient({ proxy: { url: `socks5://127.0.0.1:${ports[port]}` } })
-    return await fetch(url, { client, ...obj })
+    const client = Deno.createHttpClient({ proxy: { url: `socks5://127.0.0.1:${ports[port]}` } });
+    return await fetch(url, { client, ...obj });
+}
+
+/**
+ * 토르 네트워크가 제대로 작동하는 지 확인
+ */
+export async function is_tor_network_working(ports: number[]): Promise<boolean> {
+    try {
+        for (const [i, _] of ports.entries()) {
+            const response = await tor_fetch(ports, i, `https://check.torproject.org/api/ip`);
+            const data = await response.json();
+        }
+        return true;
+    } catch(e) {
+        log.info(`토르 네트워크에 장애 있음\n`, e);
+        return false;
+    }
 }
