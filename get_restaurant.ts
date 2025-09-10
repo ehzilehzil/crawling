@@ -3,6 +3,7 @@
  * 검색 결과를 marketmap 데이터베이스, naver 컬렉션에, id 중복없이 기록
  */
 
+import { error } from "node:console";
 import * as ez from "./utils.ts";
 import { AnyBulkWriteOperation, Document, Filter, MongoClient, UpdateFilter } from "npm:mongodb";
 
@@ -26,7 +27,7 @@ const global = { total_count: 0, count: 0, all_task_done: false };
 const filter: Filter<Document> = {
     $or: [
         { "naver_api.status": { $exists: false } },
-        { "naver_api.status": "error", "naver_api.tried_count": { $lt: 5 } },
+        { "naver_api.status": "error", "naver_api.tried_count": { $lt: 5 }, "naver_api.expires_at": { $lt: new Date() } },
         { "naver_api.status": "processing", "naver_api.expires_at": { $lt: new Date() } },
     ],
 };
@@ -62,9 +63,19 @@ async function main() {
 
         const port = ports_status.indexOf("idle");
         ports_status[port] = "busy";
-        task(port).finally(() => {
-            ports_status[port] = "idle";
-        });
+        task(port)
+            .then((_) => {
+                global.count += 1;
+                const msg = `✅ ${global.count}/${global.total_count} 개 작업 완료`;
+                ez.log.info(msg);
+                if (global.count % 10_000 === 0) ez.sendMsgToTelegram(msg);
+            })
+            .catch(({ e }) => {
+                ez.log.info(`⚠️ 작업 처리에 문제 발생 ====>`, e);
+            }).
+            finally(() => {
+                ports_status[port] = "idle";
+            });
 
         const check_docs = await nice.findOne(filter);
         if (!check_docs) global.all_task_done = true;
@@ -75,10 +86,10 @@ async function main() {
 }
 
 /**
- * 비동기 task 함수, port: api 호출 위한 포트 인덱스 번호
+ * 비동기 task 함수, port: api 호출 위한 포트 인덱스 번호, c: 현재까지 완료한 작업 개수
  * */
-async function task(port: number) {
-    global.count += 1;
+async function task(port: number): Promise<{ e: Error | undefined }> {
+    let _id;
 
     let task_expires = false;
     const timer = setTimeout(() => {
@@ -89,13 +100,15 @@ async function task(port: number) {
         const doc = await nice.findOneAndUpdate(filter, locker, {
             returnDocument: "after",
         });
-        if(!doc) return;
+        if(!doc) throw new Error(`더 이상 처리할 문서가 없음`);
+
+        _id = doc._id;
 
         const a = new Set<Document>();
         const b: AnyBulkWriteOperation<Document>[] = [];
         for (const addr of [doc.src.old_addr, doc.src_new_addr]) {
             for (const target of ["음식점", doc.src.store_nm]) {
-                if (task_expires) return;
+                if (task_expires) throw new Error(`시간 초과`);
 
                 const url = `https://svc-api.map.naver.com/v1/fusion-search/all?query=${addr + " " + target}&siteSort=relativity&petrolType=all&size=100&includes=address_polygon`;
                 const res = await ez.tor_fetch(ports, port, url);
@@ -117,7 +130,7 @@ async function task(port: number) {
             }
         }
         
-        if (task_expires) return;
+        if (task_expires) throw new Error(`시간 초과`);
         await naver.bulkWrite(b, { ordered: false }).catch(() => {});   // 중복 에러 발생하면 무시... (즉, 네이버 id 중복인 경우 삽입 안됨)
 
         await nice.findOneAndUpdate({
@@ -128,13 +141,18 @@ async function task(port: number) {
             projection: {},
         });
 
-        const msg = `✅ ${global.count}/${global.total_count} 작업 완료`;
-        ez.log.info(msg);
-        if (global.count % 10_000 === 0) ez.sendMsgToTelegram(msg);
+        return { e: undefined };
 
     } catch(e) {
-        ez.log.info(`⚠️ ${global.count}/${global.total_count} 작업에 문제 발생 ====>`, e);
-        global.count -= 1;
+        await nice.findOneAndUpdate({
+            "_id": _id, 
+        }, {
+            $set: { "naver_api.status": "error" },
+        }, {
+            projection: {},
+        });
+
+        throw { e: (e as Error) };
     } finally {
         clearTimeout(timer);
     }
