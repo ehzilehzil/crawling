@@ -3,21 +3,21 @@
  * 검색 결과를 marketmap 데이터베이스, naver 컬렉션에, id 중복없이 기록
  */
 
-import { error } from "node:console";
+
 import * as ez from "./utils.ts";
-import { AnyBulkWriteOperation, Document, Filter, MongoClient, UpdateFilter } from "npm:mongodb";
+import { AnyBulkWriteOperation, Document, Filter, MongoClient } from "npm:mongodb";
 
 
 // 토르 네트워크 관련 초기화
 const ports = [
-    9050, 9060, 9070
+    9050, 9060, 9070, 9080, 9090
 ];
 // const ports_status = await ez.init_tor(ports);  // 수동실행
-const ports_status: ("idle" | "busy")[] = [ "idle", "idle", "idle" ];
+const ports_status: ("idle" | "busy")[] = [ "idle", "idle", "idle", "idle", "idle" ];
 
 
 // 몽고DB 관련 초기화
-const client = new MongoClient(`${ez.env.MONGODB_ATLAS_URI}`);
+const client = new MongoClient(`${ez.env.MONGODB_LOCAL_URI}`);
 await client.connect();
 const db = client.db("marketmap");
 const naver = db.collection("naver");
